@@ -29,22 +29,13 @@ jobs:
       - name: Apply KernelSU-Next Manual Hooks
         working-directory: src_kernel
         run: |
-          # 1. Inspect the patch script and run it
-          head -n 40 ../patches/Patches/syscall_hook_patches.sh
-          bash ../patches/Patches/syscall_hook_patches.sh
-
-          # 2. Disable Kprobes in camellian_defconfig
-          DEFCONFIG="arch/arm64/configs/camellian_defconfig"
-          sed -i 's/CONFIG_KPROBES=y/# CONFIG_KPROBES is not set/g' $DEFCONFIG
-          sed -i 's/CONFIG_HAVE_KPROBES=y/# CONFIG_HAVE_KPROBES is not set/g' $DEFCONFIG
-          sed -i 's/CONFIG_KPROBE_EVENTS=y/# CONFIG_KPROBE_EVENTS is not set/g' $DEFCONFIG
-
-          # 3. Commit patched files to the local repo
-          git status
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add -A
-          git diff-index --quiet HEAD || git commit -m "Apply KernelSU-Next manual hooks"
+          echo "=== PATCH SCRIPT CONTENT ==="
+          cat ../patches/Patches/syscall_hook_patches.sh
+          
+          echo "=== CLONE KSU-NEXT TO INSPECT KBUILD ==="
+          git clone --depth=1 -b legacy "${{ github.server_url }}/KernelSU-Next/KernelSU-Next.git" /tmp/ksu
+          sed -n '170,235p' /tmp/ksu/kernel/Kbuild
+          exit 1
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
