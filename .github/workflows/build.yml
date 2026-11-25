@@ -11,25 +11,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout Kernel Source
-        uses: actions/checkout@v4
-        with:
-          ref: lineage-23.2
-          path: kernel
-
-      - name: Setup KernelSU Next (Legacy)
-        working-directory: kernel
-        run: |
-          REPO=$(printf "https://%s/%s/%s.git" "github.com" "KernelSU-Next" "KernelSU-Next")
-          git clone -b legacy "$REPO"
-          ln -sf ../KernelSU-Next/kernel drivers/kernelsu
-          echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
-          sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' drivers/Kconfig
-
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
-          kernel-url: ./kernel/
+          kernel-url: https://github.com
+          kernel-branch: lineage-23.2
           config: camellian_defconfig
           arch: arm64
           aosp-gcc: true
@@ -38,3 +24,9 @@ jobs:
           aosp-clang-version: r450784d
           disable-lto: true
           anykernel3: true
+          extra-cmd: |
+            REPO=$(printf "https://%s/%s/%s.git" "github.com" "KernelSU-Next" "KernelSU-Next")
+            git clone -b legacy "$REPO"
+            ln -sf ../KernelSU-Next/kernel drivers/kernelsu
+            echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
+            sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' drivers/Kconfig
