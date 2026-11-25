@@ -1,0 +1,26 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Build Kernel
+        uses: dabao1955/kernel_build_action@main
+        with:
+          kernel-url: https://github.com/noah2436/android_kernel_xiaomi_camellia
+          kernel-branch: lineage-23.2
+          config: camellian_defconfig
+          arch: arm64
+          aosp-gcc: true
+          aosp-clang: true
+          android-version: 13
+          aosp-clang-version: r450784d
+          disable-lto: true
+          anykernel3: true
