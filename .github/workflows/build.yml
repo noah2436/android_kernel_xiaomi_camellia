@@ -26,16 +26,35 @@ jobs:
           path: patches
           fetch-depth: 1
 
+      - name: Checkout KernelSU-Next Reference
+        uses: actions/checkout@v4
+        with:
+          repository: KernelSU-Next/KernelSU-Next
+          ref: legacy
+          path: src_kernel/drivers/kernelsu
+          fetch-depth: 1
+
       - name: Apply KernelSU-Next Manual Hooks
         working-directory: src_kernel
         run: |
-          echo "=== PATCH SCRIPT CONTENT ==="
-          cat ../patches/Patches/syscall_hook_patches.sh
-          
-          echo "=== CLONE KSU-NEXT TO INSPECT KBUILD ==="
-          git clone --depth=1 -b legacy "${{ github.server_url }}/KernelSU-Next/KernelSU-Next.git" /tmp/ksu
-          sed -n '170,235p' /tmp/ksu/kernel/Kbuild
-          exit 1
+          # 1. Run the hook patcher while drivers/kernelsu is present so all hooks are detected
+          bash ../patches/Patches/syscall_hook_patches.sh
+
+          # 2. Remove temporary drivers/kernelsu folder so kernel_build_action can clone it cleanly
+          rm -rf drivers/kernelsu
+
+          # 3. Disable Kprobes in camellian_defconfig so manual hooks take over cleanly
+          DEFCONFIG="arch/arm64/configs/camellian_defconfig"
+          sed -i 's/CONFIG_KPROBES=y/# CONFIG_KPROBES is not set/g' $DEFCONFIG
+          sed -i 's/CONFIG_HAVE_KPROBES=y/# CONFIG_HAVE_KPROBES is not set/g' $DEFCONFIG
+          sed -i 's/CONFIG_KPROBE_EVENTS=y/# CONFIG_KPROBE_EVENTS is not set/g' $DEFCONFIG
+
+          # 4. Verify kernel/reboot.c was patched and commit all modified files
+          grep -n "ksu_handle_sys_reboot" kernel/reboot.c
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add -A
+          git commit -m "Apply KernelSU-Next manual hooks"
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
