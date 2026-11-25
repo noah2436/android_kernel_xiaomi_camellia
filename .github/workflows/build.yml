@@ -14,7 +14,7 @@ jobs:
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
-          kernel-url: https://github.com
+          kernel-url: ${{ github.server_url }}/${{ github.repository }}
           kernel-branch: lineage-23.2
           config: camellian_defconfig
           arch: arm64
