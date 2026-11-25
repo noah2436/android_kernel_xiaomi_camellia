@@ -18,13 +18,19 @@ jobs:
           path: kernel
           fetch-depth: 1
 
+      - name: Checkout Patch Repo
+        uses: actions/checkout@v4
+        with:
+          repository: JackA1ltman/NonGKI_Kernel_Build_2nd
+          ref: mainline
+          path: patches
+          fetch-depth: 1
+
       - name: Apply KernelSU-Next Manual Hooks
         working-directory: kernel
         run: |
-          # 1. Clone the patch repository via standard github.com and run the hook patcher
-          git clone --depth=1 https://github.com /tmp/patches
-          bash /tmp/patches/Patches/syscall_hook_patches.sh
-          rm -rf /tmp/patches
+          # 1. Run the hook patcher from the checked-out patches folder
+          bash ../patches/Patches/syscall_hook_patches.sh
 
           # 2. Disable Kprobes in camellian_defconfig so manual hooks take over cleanly
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
