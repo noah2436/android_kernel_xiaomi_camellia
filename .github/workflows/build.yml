@@ -21,10 +21,10 @@ jobs:
       - name: Apply KernelSU-Next Manual Hooks
         working-directory: kernel
         run: |
-          # 1. Apply manual syscall hooks to fs/ and kernel/
-          curl -fLSs "https://githubusercontent.com" -o syscall_hook_patches.sh
-          bash syscall_hook_patches.sh
-          rm -f syscall_hook_patches.sh
+          # 1. Clone the patch repository via standard github.com and run the hook patcher
+          git clone --depth=1 https://github.com /tmp/patches
+          bash /tmp/patches/Patches/syscall_hook_patches.sh
+          rm -rf /tmp/patches
 
           # 2. Disable Kprobes in camellian_defconfig so manual hooks take over cleanly
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
