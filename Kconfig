@@ -10,3 +10,9 @@ config SRCARCH
 	option env="SRCARCH"
 
 source "arch/$SRCARCH/Kconfig"
+
+config FORCE_KSU_MANUAL
+	bool "Force KSU Manual Hook"
+	default y
+	select KSU_MANUAL_HOOK
+
