@@ -1,8 +1,6 @@
 name: Build Kernel
-
 on:
   workflow_dispatch:
-
 jobs:
   Build-Kernel:
     strategy:
@@ -17,6 +15,7 @@ jobs:
           kernel-url: ${{ github.server_url }}/${{ github.repository }}
           kernel-branch: lineage-23.2
           config: camellian_defconfig
+          merge-configs: '["ksu_manual.config"]'
           arch: arm64
           aosp-gcc: true
           aosp-clang: true
