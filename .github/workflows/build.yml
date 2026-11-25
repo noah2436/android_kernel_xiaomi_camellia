@@ -21,12 +21,10 @@ jobs:
           aosp-gcc: true
           aosp-clang: true
           android-version: 12
-          aosp-clang-version: r450784d
+          aosp-clang-version: r383902
+          ksu: true
+          ksu-other: true
+          ksu-url: ${{ github.server_url }}/KernelSU-Next/KernelSU-Next
+          ksu-version: legacy
           disable-lto: true
           anykernel3: true
-          extra-cmd: |
-            REPO=$(printf "https://%s/%s/%s.git" "github.com" "KernelSU-Next" "KernelSU-Next")
-            git clone -b legacy "$REPO"
-            ln -sf ../KernelSU-Next/kernel drivers/kernelsu
-            echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
-            sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' drivers/Kconfig
