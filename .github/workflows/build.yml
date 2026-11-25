@@ -24,3 +24,7 @@ jobs:
           aosp-clang-version: r450784d
           disable-lto: true
           anykernel3: true
+          ksu: true
+          ksu-url: https://githubusercontent.com
+          ksu-tag: legacy
+
