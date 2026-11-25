@@ -22,7 +22,7 @@ jobs:
         working-directory: kernel
         run: |
           # 1. Apply manual syscall hooks to fs/ and kernel/
-          curl -LSs "https://githubusercontent.com" -o syscall_hook_patches.sh
+          curl -fLSs "https://githubusercontent.com" -o syscall_hook_patches.sh
           bash syscall_hook_patches.sh
           rm -f syscall_hook_patches.sh
 
