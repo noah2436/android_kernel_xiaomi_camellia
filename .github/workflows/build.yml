@@ -37,20 +37,47 @@ jobs:
       - name: Apply KernelSU-Next Manual Hooks
         working-directory: src_kernel
         run: |
-          # 1. Run the hook patcher while drivers/kernelsu is present so all hooks are detected
+          # 1. Run community syscall patcher for fs/, security/, drivers/input/
           bash ../patches/Patches/syscall_hook_patches.sh
 
-          # 2. Remove temporary drivers/kernelsu folder so kernel_build_action can clone it cleanly
+          # 2. Guarantee kernel/reboot.c has ksu_handle_sys_reboot (required by Kbuild:221)
+          python3 - << 'EOF'
+          with open("kernel/reboot.c", "r") as f:
+              code = f.read()
+
+          if "ksu_handle_sys_reboot" not in code:
+              decl = "#ifdef CONFIG_KSU\nextern int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg);\n#endif\n\nSYSCALL_DEFINE4(reboot,"
+              code = code.replace("SYSCALL_DEFINE4(reboot,", decl, 1)
+
+              hook = "#ifdef CONFIG_KSU\n\tif (system_state == SYSTEM_RUNNING)\n\t\tksu_handle_sys_reboot(magic1, magic2, cmd, &arg);\n#endif\n\tif (!ns_capable("
+              if "\tif (!ns_capable(" in code:
+                  code = code.replace("\tif (!ns_capable(", hook, 1)
+              else:
+                  # Fallback: insert right after the opening brace of SYSCALL_DEFINE4(reboot
+                  idx = code.find("SYSCALL_DEFINE4(reboot,")
+                  brace = code.find("{", idx) + 1
+                  code = code[:brace] + "\n#ifdef CONFIG_KSU\n\tksu_handle_sys_reboot(magic1, magic2, cmd, &arg);\n#endif" + code[brace:]
+
+              with open("kernel/reboot.c", "w") as f:
+                  f.write(code)
+          EOF
+
+          # 3. Verify kernel/reboot.c contains the hook (fails immediately if missing)
+          grep -n "ksu_handle_sys_reboot" kernel/reboot.c
+
+          # 4. Remove temporary drivers/kernelsu folder so kernel_build_action pulls it cleanly
           rm -rf drivers/kernelsu
 
-          # 3. Disable Kprobes in camellian_defconfig so manual hooks take over cleanly
+          # 5. Set KernelSU manual hook flags and disable Kprobes directly in camellian_defconfig
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
+          echo "CONFIG_KSU=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> $DEFCONFIG
+          echo "# CONFIG_KSU_KPROBES_HOOK is not set" >> $DEFCONFIG
           sed -i 's/CONFIG_KPROBES=y/# CONFIG_KPROBES is not set/g' $DEFCONFIG
           sed -i 's/CONFIG_HAVE_KPROBES=y/# CONFIG_HAVE_KPROBES is not set/g' $DEFCONFIG
           sed -i 's/CONFIG_KPROBE_EVENTS=y/# CONFIG_KPROBE_EVENTS is not set/g' $DEFCONFIG
 
-          # 4. Verify kernel/reboot.c was patched and commit all modified files
-          grep -n "ksu_handle_sys_reboot" kernel/reboot.c
+          # 6. Commit all patched files locally
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add -A
