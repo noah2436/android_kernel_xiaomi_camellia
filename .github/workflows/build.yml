@@ -37,19 +37,21 @@ jobs:
       - name: Integrate KernelSU-Next & Manual Hooks
         working-directory: src_kernel
         run: |
-          # 1. Link KernelSU-Next into drivers/kernelsu (including uapi headers) & wire Makefile/Kconfig
+          # 1. Link KernelSU-Next into drivers/kernelsu & copy uapi headers into all search paths
           cp -r ../ksu_next/kernel drivers/kernelsu
-          if [ -d "../ksu_next/include/uapi" ]; then
-            cp -r ../ksu_next/include/uapi drivers/kernelsu/uapi
-            mkdir -p drivers/kernelsu/include
-            cp -r ../ksu_next/include/uapi drivers/kernelsu/include/uapi
-          fi
+          mkdir -p drivers/kernelsu/uapi drivers/kernelsu/include/uapi drivers/kernelsu/policy/uapi
+          find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/uapi/ \;
+          find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/include/uapi/ \;
+          find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/policy/uapi/ \;
+
           echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
-          # 2. Create placeholder camellian/cust.dtsi so DTB compilation succeeds
+          # 2. Create placeholder camellian/cust.dtsi in both local and global DT include paths
           mkdir -p arch/arm64/boot/dts/mediatek/camellian
+          mkdir -p arch/arm64/boot/dts/include/camellian
           touch arch/arm64/boot/dts/mediatek/camellian/cust.dtsi
+          touch arch/arm64/boot/dts/include/camellian/cust.dtsi
 
           # 3. Apply manual syscall hooks (fs/, security/, drivers/input/)
           bash ../patches/Patches/syscall_hook_patches.sh
