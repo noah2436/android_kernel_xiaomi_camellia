@@ -47,11 +47,37 @@ jobs:
           echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
-          # 2. Create placeholder camellian/cust.dtsi in both local and global DT include paths
+          # 2. Create placeholder camellian/cust.dtsi & stub missing Huaqin linker symbols
           mkdir -p arch/arm64/boot/dts/mediatek/camellian
           mkdir -p arch/arm64/boot/dts/include/camellian
           touch arch/arm64/boot/dts/mediatek/camellian/cust.dtsi
           touch arch/arm64/boot/dts/include/camellian/cust.dtsi
+
+          grep -rnE "hq_regiser_hw_info|get_huaqin_pcba_config|get_audio_pa_vendor" include/ drivers/ sound/ || true
+
+          cat << 'EOF' > drivers/misc/hq_stubs.c
+          #include <linux/module.h>
+          #include <linux/types.h>
+
+          __weak int hq_regiser_hw_info(int type, char *info)
+          {
+              return 0;
+          }
+          EXPORT_SYMBOL(hq_regiser_hw_info);
+
+          __weak int get_huaqin_pcba_config(void)
+          {
+              return 0;
+          }
+          EXPORT_SYMBOL(get_huaqin_pcba_config);
+
+          __weak int get_audio_pa_vendor(void)
+          {
+              return 0;
+          }
+          EXPORT_SYMBOL(get_audio_pa_vendor);
+          EOF
+          echo 'obj-y += hq_stubs.o' >> drivers/misc/Makefile
 
           # 3. Apply manual syscall hooks (fs/, security/, drivers/input/)
           bash ../patches/Patches/syscall_hook_patches.sh
@@ -109,7 +135,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add -A
-          git commit -m "Integrate KernelSU-Next legacy with manual hooks and DTB fix"
+          git commit -m "Integrate KernelSU-Next legacy with manual hooks, DTB, and Huaqin stubs"
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
