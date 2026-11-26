@@ -37,15 +37,24 @@ jobs:
       - name: Integrate KernelSU-Next & Manual Hooks
         working-directory: src_kernel
         run: |
-          # 1. Link KernelSU-Next into drivers/kernelsu & wire Makefile/Kconfig
+          # 1. Link KernelSU-Next into drivers/kernelsu (including uapi headers) & wire Makefile/Kconfig
           cp -r ../ksu_next/kernel drivers/kernelsu
+          if [ -d "../ksu_next/include/uapi" ]; then
+            cp -r ../ksu_next/include/uapi drivers/kernelsu/uapi
+            mkdir -p drivers/kernelsu/include
+            cp -r ../ksu_next/include/uapi drivers/kernelsu/include/uapi
+          fi
           echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
-          # 2. Apply manual syscall hooks (fs/, security/, drivers/input/)
+          # 2. Create placeholder camellian/cust.dtsi so DTB compilation succeeds
+          mkdir -p arch/arm64/boot/dts/mediatek/camellian
+          touch arch/arm64/boot/dts/mediatek/camellian/cust.dtsi
+
+          # 3. Apply manual syscall hooks (fs/, security/, drivers/input/)
           bash ../patches/Patches/syscall_hook_patches.sh
 
-          # 3. Guarantee kernel/reboot.c has ksu_handle_sys_reboot
+          # 4. Guarantee kernel/reboot.c has ksu_handle_sys_reboot
           python3 - << 'EOF'
           with open("kernel/reboot.c", "r") as f:
               code = f.read()
@@ -68,7 +77,7 @@ jobs:
 
           grep -n "ksu_handle_sys_reboot" kernel/reboot.c
 
-          # 4. Configure camellian_defconfig cleanly & remove missing mihw vendor module
+          # 5. Configure camellian_defconfig cleanly & remove missing mihw vendor module
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
           sed -i '/CONFIG_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_HAVE_KPROBES/d' $DEFCONFIG
@@ -89,16 +98,16 @@ jobs:
           # CONFIG_MIHW is not set
           EOF
 
-          # 5. Check resolved Kconfig values so we can verify in logs
+          # 6. Check resolved Kconfig values & clean build artifacts
           make ARCH=arm64 camellian_defconfig
           grep -E "CONFIG_KSU|CONFIG_KPROBES" .config || true
           make ARCH=arm64 mrproper
 
-          # 6. Commit everything into src_kernel
+          # 7. Commit everything into src_kernel
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add -A
-          git commit -m "Integrate KernelSU-Next legacy with manual hooks"
+          git commit -m "Integrate KernelSU-Next legacy with manual hooks and DTB fix"
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
