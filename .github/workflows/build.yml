@@ -37,11 +37,11 @@ jobs:
       - name: Integrate KernelSU-Next & Manual Hooks
         working-directory: src_kernel
         run: |
-          # 1. Link KernelSU-Next into drivers/kernelsu & copy uapi headers into all search paths
-          cp -r ../ksu_next/kernel drivers/kernelsu
-          mkdir -p drivers/kernelsu/uapi drivers/kernelsu/include/uapi drivers/kernelsu/policy/uapi
+          # 1. Copy KernelSU-Next dereferencing symlinks (-rL) so include/uapi resolves properly
+          cp -rL ../ksu_next/kernel drivers/kernelsu
+          rm -rf drivers/kernelsu/uapi drivers/kernelsu/policy/uapi
+          mkdir -p drivers/kernelsu/uapi drivers/kernelsu/policy/uapi
           find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/uapi/ \;
-          find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/include/uapi/ \;
           find ../ksu_next -name "*.h" -path "*/uapi/*" -exec cp {} drivers/kernelsu/policy/uapi/ \;
 
           echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
