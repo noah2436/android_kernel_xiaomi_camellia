@@ -93,12 +93,13 @@ jobs:
                   f.write(code)
           EOF
 
-          # 5. Configure camellian_defconfig cleanly & remove missing mihw vendor module if external
+          # 5. Configure camellian_defconfig cleanly & raise frame-warn threshold for Clang
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
           sed -i '/CONFIG_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_HAVE_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_KPROBE_EVENTS/d' $DEFCONFIG
           sed -i '/CONFIG_KSU/d' $DEFCONFIG
+          sed -i '/CONFIG_FRAME_WARN/d' $DEFCONFIG
           if [ ! -d "../vendor/xiaomi/kernel_modules/mihw" ]; then
             sed -i '/CONFIG_MIHW/d' $DEFCONFIG
             sed -i '/mihw/d' drivers/Makefile
@@ -108,6 +109,7 @@ jobs:
           cat << 'EOF' >> $DEFCONFIG
           CONFIG_KSU=y
           CONFIG_KSU_MANUAL_HOOK=y
+          CONFIG_FRAME_WARN=8192
           # CONFIG_KSU_KPROBES_HOOK is not set
           # CONFIG_KSU_SYSCALL_TABLE_HOOK is not set
           # CONFIG_KPROBES is not set
