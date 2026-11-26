@@ -68,12 +68,15 @@ jobs:
 
           grep -n "ksu_handle_sys_reboot" kernel/reboot.c
 
-          # 4. Configure camellian_defconfig cleanly
+          # 4. Configure camellian_defconfig cleanly & remove missing mihw vendor module
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
           sed -i '/CONFIG_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_HAVE_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_KPROBE_EVENTS/d' $DEFCONFIG
           sed -i '/CONFIG_KSU/d' $DEFCONFIG
+          sed -i '/CONFIG_MIHW/d' $DEFCONFIG
+          sed -i '/mihw/d' drivers/Makefile
+          sed -i '/mihw/d' drivers/Kconfig
 
           cat << 'EOF' >> $DEFCONFIG
           CONFIG_KSU=y
@@ -83,6 +86,7 @@ jobs:
           # CONFIG_KPROBES is not set
           # CONFIG_HAVE_KPROBES is not set
           # CONFIG_KPROBE_EVENTS is not set
+          # CONFIG_MIHW is not set
           EOF
 
           # 5. Check resolved Kconfig values so we can verify in logs
