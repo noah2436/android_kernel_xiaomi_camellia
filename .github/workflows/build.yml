@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Build MIUI 14 Kernel
 
 on:
   workflow_dispatch:
@@ -11,10 +11,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout Kernel Source
+      - name: Checkout MIUI 14 Stock Kernel Source (camellian-t-oss)
         uses: actions/checkout@v4
         with:
-          ref: lineage-23.2
+          repository: MiCode/Xiaomi_Kernel_OpenSource
+          ref: camellian-t-oss
           path: src_kernel
           fetch-depth: 1
 
@@ -47,39 +48,28 @@ jobs:
           echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
           sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
 
-          # 2. Create placeholder camellian/cust.dtsi & stub missing Huaqin linker symbols
+          # 2. Create placeholder camellian/cust.dtsi if absent & safe __weak Huaqin stubs
           mkdir -p arch/arm64/boot/dts/mediatek/camellian
           mkdir -p arch/arm64/boot/dts/include/camellian
-          touch arch/arm64/boot/dts/mediatek/camellian/cust.dtsi
-          touch arch/arm64/boot/dts/include/camellian/cust.dtsi
-
-          grep -rnE "hq_regiser_hw_info|get_huaqin_pcba_config|get_audio_pa_vendor" include/ drivers/ sound/ || true
+          [ -f arch/arm64/boot/dts/mediatek/camellian/cust.dtsi ] || touch arch/arm64/boot/dts/mediatek/camellian/cust.dtsi
+          [ -f arch/arm64/boot/dts/include/camellian/cust.dtsi ] || touch arch/arm64/boot/dts/include/camellian/cust.dtsi
 
           cat << 'EOF' > drivers/misc/hq_stubs.c
           #include <linux/module.h>
           #include <linux/types.h>
 
-          __weak int hq_regiser_hw_info(int type, char *info)
-          {
-              return 0;
-          }
+          __weak int hq_regiser_hw_info(int type, char *info) { return 0; }
           EXPORT_SYMBOL(hq_regiser_hw_info);
 
-          __weak int get_huaqin_pcba_config(void)
-          {
-              return 0;
-          }
+          __weak int get_huaqin_pcba_config(void) { return 0; }
           EXPORT_SYMBOL(get_huaqin_pcba_config);
 
-          __weak int get_audio_pa_vendor(void)
-          {
-              return 0;
-          }
+          __weak int get_audio_pa_vendor(void) { return 0; }
           EXPORT_SYMBOL(get_audio_pa_vendor);
           EOF
           echo 'obj-y += hq_stubs.o' >> drivers/misc/Makefile
 
-          # 3. Apply manual syscall hooks (fs/, security/, drivers/input/)
+          # 3. Apply manual syscall hooks
           bash ../patches/Patches/syscall_hook_patches.sh
 
           # 4. Guarantee kernel/reboot.c has ksu_handle_sys_reboot
@@ -103,17 +93,17 @@ jobs:
                   f.write(code)
           EOF
 
-          grep -n "ksu_handle_sys_reboot" kernel/reboot.c
-
-          # 5. Configure camellian_defconfig cleanly & remove missing mihw vendor module
+          # 5. Configure camellian_defconfig cleanly & remove missing mihw vendor module if external
           DEFCONFIG="arch/arm64/configs/camellian_defconfig"
           sed -i '/CONFIG_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_HAVE_KPROBES/d' $DEFCONFIG
           sed -i '/CONFIG_KPROBE_EVENTS/d' $DEFCONFIG
           sed -i '/CONFIG_KSU/d' $DEFCONFIG
-          sed -i '/CONFIG_MIHW/d' $DEFCONFIG
-          sed -i '/mihw/d' drivers/Makefile
-          sed -i '/mihw/d' drivers/Kconfig
+          if [ ! -d "../vendor/xiaomi/kernel_modules/mihw" ]; then
+            sed -i '/CONFIG_MIHW/d' $DEFCONFIG
+            sed -i '/mihw/d' drivers/Makefile
+            sed -i '/mihw/d' drivers/Kconfig
+          fi
 
           cat << 'EOF' >> $DEFCONFIG
           CONFIG_KSU=y
@@ -123,25 +113,20 @@ jobs:
           # CONFIG_KPROBES is not set
           # CONFIG_HAVE_KPROBES is not set
           # CONFIG_KPROBE_EVENTS is not set
-          # CONFIG_MIHW is not set
           EOF
 
-          # 6. Check resolved Kconfig values & clean build artifacts
-          make ARCH=arm64 camellian_defconfig
-          grep -E "CONFIG_KSU|CONFIG_KPROBES" .config || true
-          make ARCH=arm64 mrproper
-
-          # 7. Commit everything into src_kernel
+          # 6. Commit into local src_kernel
+          git init -q 2>/dev/null || true
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add -A
-          git commit -m "Integrate KernelSU-Next legacy with manual hooks, DTB, and Huaqin stubs"
+          git commit -m "Integrate KernelSU-Next legacy into MiCode camellian-t-oss"
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
           kernel-url: file://${{ github.workspace }}/src_kernel
-          kernel-branch: lineage-23.2
+          kernel-branch: camellian-t-oss
           config: camellian_defconfig
           arch: arm64
           aosp-gcc: true
